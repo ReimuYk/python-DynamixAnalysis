@@ -18,7 +18,9 @@ class GUI:
         self.root.title("Dynamix Data Viewer")
         # Search Line
         Label(self.root,text="Search:").place(x=30,y=30)
-        self.searchtext = Entry(self.root,width=60)
+        self.searchcontent = StringVar()
+        self.searchtext = Entry(self.root,textvariable=self.searchcontent,width=60)
+        self.searchtext.bind("<Return>",self.searchresult)
         self.searchtext.place(x=100,y=33)
         # ListView content & event
         self.listframe = Frame(self.root,width=80)
@@ -32,11 +34,40 @@ class GUI:
         self.listview.pack()
         self.listframe.place(x=30,y=80)
         # DataView
-        self.display(testsongdata)
+##        self.display(testsongdata)
+        
+    def searchresult(self,event):
+        try:
+            self.dataframe.place_forget()
+        except:
+            pass
+        try:
+            self.listframe.place_forget()
+        except:
+            pass
+        
+        # clear list
+        for item in self.listview.get_children():
+            self.listview.delete(item)
+            
+        # add content
+        if self.searchcontent.get()=='#':
+            listdata = self.titles["OTH"]
+        else:
+            listdata = self.search(self.searchcontent.get(),self.titles["ASC"])
+        idx=1
+        for line in listdata:
+            self.listview.insert("",idx,text="",values=line)
+            idx+=1
+        self.listframe.place(x=30,y=80)
         
     def display(self,songdata):
         try:
             self.dataframe.place_forget()
+        except:
+            pass
+        try:
+            self.listframe.place_forget()
         except:
             pass
         # DataView
@@ -126,9 +157,12 @@ class GUI:
         
     def DBclickList(self,event):
         item = self.listview.selection()[0]
-        print(self.listview.item(item,"values"))
+        number = self.listview.item(item,"values")[0]
         self.listframe.place_forget()
-        self.display(testsongdata)
+        for song in self.data:
+            if song["No"]==number:
+                self.display(song)
+                break
     def load_songs(self):
         files = []
         for name in os.listdir("./song_data"):
