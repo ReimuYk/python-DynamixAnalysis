@@ -41,7 +41,7 @@ class GUI:
             pass
         # DataView
         self.dataframe = Frame(self.root,width=60)
-        load = Image.open("./song_data/001.png")
+        load = Image.open("./song_data/%s.png"%songdata["No"])
         load = load.resize((320,180))
         render = ImageTk.PhotoImage(load)
         img = Label(self.dataframe,image=render)
@@ -74,20 +74,50 @@ class GUI:
         Label(self.scoreframe,text="Miss",width=10).grid(row=0,column=5)
         Label(self.scoreframe,text="图",width=4,bg="red").grid(row=0,column=6)
         class EditableCell:
-            def __init__(self,frm,linkfile,r,c):
+            def __init__(self,frm,linkfile,r,c,color,w):
                 self.frm = frm
                 self.linkfile = linkfile
                 self.r = r
                 self.c = c
-                self.data = 
-            def edit(self):
-                
+                self.color=color
+                self.w = w
+                self.data = StringVar()
+                f = open(self.linkfile,"r")
+                self.data.set(eval(f.read())[r][c])
+                f.close()
+                self.cell = Label(self.frm,textvariable=self.data,bg=self.color)
+                self.cell.bind("<1>",self.edit)
+                self.cell.grid(row=self.r,column=self.c,sticky=W+E)
+            def edit(self,event):
+                self.cell.grid_forget()
+                self.cell = Entry(self.frm,textvariable=self.data,width=self.w,justify='center')
+                self.cell.bind("<Return>",self.save)
+                self.cell.grid(row=self.r,column=self.c,sticky=W+E)
+            def save(self,event):
+                self.cell = Label(self.frm,textvariable=self.data,bg=self.color)
+                self.cell.bind("<1>",self.edit)
+                self.cell.grid(row=self.r,column=self.c,sticky=W+E)
+                f = open(self.linkfile,"r")
+                dt = eval(f.read())
+                f.close()
+                dt[self.r][self.c] = self.data.get()
+                f = open(self.linkfile,"w")
+                f.write(str(dt))
+                f.close()
+
+        if not os.path.exists("./user_data/%s.json"%songdata["No"]):
+            f = open("./user_data/%s.json"%songdata["No"],"w")
+            f.write(str([['']*7]*6))
+            f.close()
         for diffnum in range(5):
             if songdata["level"][diffnum]=='-':
                 Label(self.scoreframe,bg="white").grid(row=1+diffnum,columnspan=7)
             else:
                 Label(self.scoreframe,text=difflist[diffnum],bg=colorlist[diffnum]).grid(row=1+diffnum,column=0,sticky=W+E)
                 Label(self.scoreframe,text=songdata["level"][diffnum],bg=colorlist[diffnum]).grid(row=1+diffnum,column=1,sticky=W+E)
+                EditableCell(self.scoreframe,"./user_data/%s.json"%songdata["No"],diffnum+1,2,colorlist[diffnum],10)
+                for k in range(3,6):
+                    EditableCell(self.scoreframe,"./user_data/%s.json"%songdata["No"],diffnum+1,k,colorlist[diffnum],10)
                 
 
         Label(self.dataframe).grid(row=8)
@@ -120,16 +150,16 @@ class GUI:
         for s in songs:
             t = s["title"]
             if IS_ASCII(t[:3]):
-                ret["ASC"].append(t)
+                ret["ASC"].append((s["No"],t))
             else:
-                ret["OTH"].append(t)
+                ret["OTH"].append((s["No"],t))
         return ret
 
     def search(self,reg,titles):
-        ''' titles should be a list [] '''
+        ''' titles should be a list [(No,title)] '''
         ret = []
         for t in titles:
-            if reg.lower()==t[:len(reg)].lower():
+            if reg.lower()==t[1][:len(reg)].lower():
                 ret.append(t)
         return ret
 
