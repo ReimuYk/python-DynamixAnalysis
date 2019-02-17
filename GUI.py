@@ -1,5 +1,8 @@
 import pickle as pkl
+import win32api
+import win32con
 import os
+from TkinterDnD2 import *
 from tkinter import *
 from tkinter import ttk
 from PIL import Image,ImageTk
@@ -13,7 +16,9 @@ class GUI:
         self.data = self.load_songs()
         self.titles = self.title(self.data)
         # GUI grids
-        self.root = Tk()
+        self.root = TkinterDnD.Tk()
+        self.root.drop_target_register(DND_FILES)
+        self.root.dnd_bind("<<Drop>>",self.event_drop)
         self.root.geometry('555x450')
         self.root.title("Dynamix Data Viewer")
         # Search Line
@@ -33,8 +38,24 @@ class GUI:
         self.listview.bind("<Double-1>",self.DBclickList)
         self.listview.pack()
         self.listframe.place(x=30,y=80)
-        # DataView
-##        self.display(testsongdata)
+        # displayfile (picture)
+        self.displayfile = StringVar()
+
+    def event_drop(self,event):
+        print(event.data)
+        filepath, ext = os.path.splitext(event.data)
+        if not ext in ['.jpg','.png','.jpeg']:
+            print("The file is not a picture")
+            return
+        
+        load = Image.open(event.data)
+        load = load.resize((500,282))
+        render = ImageTk.PhotoImage(load)
+        img = Label(self.root,image=render)
+        img.image = render
+        img.place(x=585,y=30)
+        
+        self.displayfile.set(event.data)
         
     def searchresult(self,event):
         try:
@@ -96,14 +117,15 @@ class GUI:
         Label(self.dataframe,text=songdata["rightside"]).grid(row=7,column=2)
         self.scoreframe = Frame(self.dataframe,bg="white")
         difflist = ["Casual","Normal","Hard","Mega","Giga"]
-        colorlist= ["pink"]*5 # 待修改
+        colorlist= ["#C1FFC1","#CAE1FF","#EEB4B4","#EE82EE","#DCDCDC"]
         Label(self.scoreframe,text="难度",width=10,bg="white").grid(row=0,column=0)
         Label(self.scoreframe,text="等级",width=6).grid(row=0,column=1)
         Label(self.scoreframe,text="分数",width=15,bg="white").grid(row=0,column=2)
         Label(self.scoreframe,text="Perfect",width=10).grid(row=0,column=3)
         Label(self.scoreframe,text="Good",width=10,bg="white").grid(row=0,column=4)
         Label(self.scoreframe,text="Miss",width=10).grid(row=0,column=5)
-        Label(self.scoreframe,text="图",width=4,bg="red").grid(row=0,column=6)
+        Label(self.scoreframe,text="STAT",width=4,bg="white").grid(row=0,column=6)
+        
         class EditableCell:
             def __init__(self,frm,linkfile,r,c,color,w):
                 self.frm = frm
@@ -135,6 +157,43 @@ class GUI:
                 f = open(self.linkfile,"w")
                 f.write(str(dt))
                 f.close()
+            def value(self):
+                f = open(self.linkfile,"r")
+                dt = eval(f.read())
+                f.close()
+                return dt[self.r][self.c]
+        
+        class StatCell:
+            def __init__(self,frm,linkfile,r,c,color,datacells,displayfile):
+                self.frm = frm
+                self.linkfile = linkfile
+                self.r = r
+                self.c = c
+                self.color = color
+                self.st = st
+                self.datacells = datacells # 4 cells ['score','perfect','good','miss']
+                self.displayfile = displayfile # StringVar()
+                self.cell = None
+            def refresh(self):
+                try:
+                    self.cell.grid_forget()
+                except:
+                    pass
+                d = self.datacells
+                if d[0]=='1000000':
+                    self.st = 'Ω'
+                elif d[3]=='0':
+                    self.st = 'FC'
+                elif d[0]!='' and d[1]!='' and d[2]!='' and d[3]!='':
+                    self.st = 'CL'
+                else:
+                    self.st = 'NP'
+                self.cell = Label(self.frm,text=self.st,bg=self.color)
+                self.cell.grid(row=self.r,column=self.c,sticky=W+E)
+            def event_rightclick(self,event):
+                # replace linkfile if file loaded
+                pass
+                
 
         if not os.path.exists("./user_data/%s.json"%songdata["No"]):
             f = open("./user_data/%s.json"%songdata["No"],"w")
@@ -146,9 +205,10 @@ class GUI:
             else:
                 Label(self.scoreframe,text=difflist[diffnum],bg=colorlist[diffnum]).grid(row=1+diffnum,column=0,sticky=W+E)
                 Label(self.scoreframe,text=songdata["level"][diffnum],bg=colorlist[diffnum]).grid(row=1+diffnum,column=1,sticky=W+E)
-                EditableCell(self.scoreframe,"./user_data/%s.json"%songdata["No"],diffnum+1,2,colorlist[diffnum],10)
+                celllist = []
+                celllist.append(EditableCell(self.scoreframe,"./user_data/%s.json"%songdata["No"],diffnum+1,2,colorlist[diffnum],15))
                 for k in range(3,6):
-                    EditableCell(self.scoreframe,"./user_data/%s.json"%songdata["No"],diffnum+1,k,colorlist[diffnum],10)
+                    celllist.append(EditableCell(self.scoreframe,"./user_data/%s.json"%songdata["No"],diffnum+1,k,colorlist[diffnum],10))
                 
 
         Label(self.dataframe).grid(row=8)
