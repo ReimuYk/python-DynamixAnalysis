@@ -1,11 +1,12 @@
 import pickle as pkl
 import win32api
 import win32con
-import os
+import os, shutil
 from TkinterDnD2 import *
 from tkinter import *
 from tkinter import ttk
 from PIL import Image,ImageTk
+import tkinter.messagebox
 
 testsongdata = {'genre': 'Dancecore', 'level': ['2', '6', '9', '-', '14'], 'composer': 'SUWAKI', 'BPM': '171', 'rightside': 'PAD', 'No': '002', 'title': '春菊', 'length': '2:17', 'unlock': 'Rank 1 + 23000 Frags', 'pic': 'https://vignette.wikia.nocookie.net/dynamixc4cat/images/9/9a/%E6%98%A5%E8%8F%8A.jpg/revision/latest?cb=20141126084307', 'update': '30/10/2014', 'notes': ['208', '601', '719', '-', '1206'], 'leftside': 'MIXER'}
 
@@ -49,12 +50,15 @@ class GUI:
             return
         
         load = Image.open(event.data)
-        load = load.resize((500,282))
+        load = load.resize((520,390))
         render = ImageTk.PhotoImage(load)
         img = Label(self.root,image=render)
         img.image = render
         img.place(x=585,y=30)
-        
+
+        Label(self.root,text='Display File',bg='yellow').place(x=585,y=30)
+
+        self.root.geometry("1150x450")
         self.displayfile.set(event.data)
         
     def searchresult(self,event):
@@ -164,16 +168,17 @@ class GUI:
                 return dt[self.r][self.c]
         
         class StatCell:
-            def __init__(self,frm,linkfile,r,c,color,datacells,displayfile):
+            def __init__(self,frm,linkfile,r,c,color,datacells,displayfile,gui):
                 self.frm = frm
                 self.linkfile = linkfile
                 self.r = r
                 self.c = c
                 self.color = color
-                self.st = st
                 self.datacells = datacells # 4 cells ['score','perfect','good','miss']
                 self.displayfile = displayfile # StringVar()
+                self.gui = gui
                 self.cell = None
+                self.refresh()
             def refresh(self):
                 try:
                     self.cell.grid_forget()
@@ -188,11 +193,53 @@ class GUI:
                     self.st = 'CL'
                 else:
                     self.st = 'NP'
-                self.cell = Label(self.frm,text=self.st,bg=self.color)
+                if os.path.exists(self.linkfile):
+                    self.cell = Label(self.frm,text=self.st,bg=self.color)
+                else:
+                    self.cell = Label(self.frm,text=self.st,bg='white')
+                self.cell.bind("<1>",self.event_leftclick)
+                self.cell.bind("<3>",self.event_rightclick)
+                self.cell.bind("<Double-3>",self.event_doubleright)
                 self.cell.grid(row=self.r,column=self.c,sticky=W+E)
             def event_rightclick(self,event):
                 # replace linkfile if file loaded
-                pass
+                print("rightclick")
+                if not self.displayfile.get():
+                    print("displayfile not exists")
+                    return
+                if os.path.exists(self.linkfile):
+                    if not tkinter.messagebox.askokcancel("覆盖","replace %s score data?"%difflist[self.r-1]):
+                        print("replace canceled")
+                        return
+                    os.remove(self.linkfile)
+                shutil.copyfile(self.displayfile.get(),self.linkfile)
+                self.refresh()
+            def event_leftclick(self,event):
+                # display linkfile picture
+                print("leftclick")
+                if not os.path.exists(self.linkfile):
+                    print("linkfile not exists")
+                    self.gui.root.geometry("550x450")
+                    self.displayfile.set('')
+                    return
+                load = Image.open(self.linkfile)
+                load = load.resize((520,390))
+                render = ImageTk.PhotoImage(load)
+                img = Label(self.gui.root,image=render)
+                img.image = render
+                img.place(x=585,y=30)
+                self.displayfile.set('')
+                self.gui.root.geometry("1150x450")
+            def event_doubleright(self,event):
+                if os.path.exists(self.linkfile):
+                    if tkinter.messagebox.askokcancel('删除','delete %s score data?'%difflist[self.r-1]):
+                        os.remove(self.linkfile)
+                    else:
+                        print("delete canceled")
+                else:
+                    print("linkfile not exists")
+                self.refresh()
+                
                 
 
         if not os.path.exists("./user_data/%s.json"%songdata["No"]):
@@ -209,6 +256,7 @@ class GUI:
                 celllist.append(EditableCell(self.scoreframe,"./user_data/%s.json"%songdata["No"],diffnum+1,2,colorlist[diffnum],15))
                 for k in range(3,6):
                     celllist.append(EditableCell(self.scoreframe,"./user_data/%s.json"%songdata["No"],diffnum+1,k,colorlist[diffnum],10))
+                StatCell(self.scoreframe,"./user_data/%s_%d.jpg"%(songdata["No"],diffnum),diffnum+1,6,colorlist[diffnum],celllist,self.displayfile,self)
                 
 
         Label(self.dataframe).grid(row=8)
@@ -223,6 +271,7 @@ class GUI:
             if song["No"]==number:
                 self.display(song)
                 break
+        self.searchcontent.set('')
     def load_songs(self):
         files = []
         for name in os.listdir("./song_data"):
