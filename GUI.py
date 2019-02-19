@@ -185,11 +185,11 @@ class GUI:
                 except:
                     pass
                 d = self.datacells
-                if d[0]=='1000000':
+                if d[0].value()=='1000000':
                     self.st = 'Ω'
-                elif d[3]=='0':
+                elif d[3].value()=='0':
                     self.st = 'FC'
-                elif d[0]!='' and d[1]!='' and d[2]!='' and d[3]!='':
+                elif d[0].value()!='' and d[1].value()!='' and d[2].value()!='' and d[3].value()!='':
                     self.st = 'CL'
                 else:
                     self.st = 'NP'
