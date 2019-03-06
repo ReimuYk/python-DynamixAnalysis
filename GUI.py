@@ -45,7 +45,7 @@ class GUI:
     def event_drop(self,event):
         print(event.data)
         filepath, ext = os.path.splitext(event.data)
-        if not ext in ['.jpg','.png','.jpeg']:
+        if not ext.lower() in ['.jpg','.png','.jpeg']:
             print("The file is not a picture")
             return
         
